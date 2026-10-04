@@ -1,0 +1,21 @@
+name: Phase 0 CI probe
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record the PR update actor and SHA
+        env:
+          RUN_ACTOR: ${{ github.actor }}
+          EVENT_SENDER: ${{ github.event.sender.login }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          printf 'actor=%s\nsender=%s\nhead_sha=%s\n' \
+            "$RUN_ACTOR" "$EVENT_SENDER" "$PR_HEAD_SHA"

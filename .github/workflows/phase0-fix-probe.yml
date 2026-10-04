@@ -1,0 +1,24 @@
+name: Phase 0 Fix loop probe
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  fix-probe:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      vars.PHASE0_APP_BOT_LOGIN != '' &&
+      github.actor != vars.PHASE0_APP_BOT_LOGIN
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm Fix would run without changing the repository
+        env:
+          RUN_ACTOR: ${{ github.actor }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          printf 'Fix probe would run: actor=%s head_sha=%s\n' \
+            "$RUN_ACTOR" "$PR_HEAD_SHA"

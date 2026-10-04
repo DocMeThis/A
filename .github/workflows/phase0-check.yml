@@ -1,0 +1,59 @@
+name: Phase 0 Check probe
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Record the PR update actor, SHA, and OIDC claims
+        env:
+          RUN_ACTOR: ${{ github.actor }}
+          EVENT_SENDER: ${{ github.event.sender.login }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          printf 'actor=%s\nsender=%s\nhead_sha=%s\n' \
+            "$RUN_ACTOR" "$EVENT_SENDER" "$PR_HEAD_SHA"
+          python - <<'PY'
+          import base64
+          import json
+          import os
+          from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+          from urllib.request import Request, urlopen
+
+          parts = urlsplit(os.environ["ACTIONS_ID_TOKEN_REQUEST_URL"])
+          query = parse_qsl(parts.query, keep_blank_values=True)
+          query.append(("audience", "https://gateway.docmethis.com"))
+          url = urlunsplit(parts._replace(query=urlencode(query)))
+          request = Request(
+              url,
+              headers={"Authorization": f"Bearer {os.environ['ACTIONS_ID_TOKEN_REQUEST_TOKEN']}"},
+          )
+          with urlopen(request, timeout=10) as response:
+              token = json.load(response)["value"]
+
+          payload = token.split(".")[1]
+          payload += "=" * (-len(payload) % 4)
+          claims = json.loads(base64.urlsafe_b64decode(payload))
+          for name in (
+              "repository",
+              "repository_id",
+              "repository_owner_id",
+              "sha",
+              "event_name",
+              "workflow_ref",
+              "workflow_sha",
+              "job_workflow_ref",
+              "run_id",
+              "run_attempt",
+          ):
+              print(f"oidc.{name}={claims.get(name)!r}")
+          PY
