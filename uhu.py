@@ -1,2 +1,2 @@
-def main(foo: str) -> int:
-  return int(foo)
+def main(foo: str, bar: int) -> int:
+  return int(foo) + bar
